@@ -112,6 +112,33 @@ reset_brightness()
     echo 100 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
 }
 
+reset_brightness() {
+    if [ -z "$1" ]; then
+        echo $1 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    else
+        echo 100 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    fi
+}
+
+
+############################################################
+# mode
+
+set_mode_performance() 
+{
+    Error Mode setting is not implemented
+}
+
+set_mode_balanced()
+{
+    Error Mode setting is not implemented
+}
+
+set_mode_batery()
+{
+    Error Mode setting is not implemented
+}
+
 
 ############################################################
 # Process the input options. Add options as needed.        #
