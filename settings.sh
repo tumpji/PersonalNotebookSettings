@@ -5,17 +5,19 @@
 Help()
 {
    # Display Help
-   echo "Syntax: scriptTemplate [-d |-e|-v|-r]"
-   echo "options:"
-   echo "h     Print this Help."
-   echo "v     Verbose mode."
-   echo "d|disable"
-   echo "\tt|touch|touchpad\t Disables touchpad"
-   echo "e|enable"
-   echo "\tt|touch|touchpad\t Enables touchpad"
-   echo "r|restart"
-   echo "\tb|brightness|backlight\t Resets maximal brightness to 100/255"
+   echo -e "Syntax: scriptTemplate [-d |-e|-v|-r]"
+   echo -e "options:"
+   echo -e "h     Print this Help."
+   echo -e "v     Verbose mode."
+   echo -e "d|disable"
+   echo -e "\tt|touch|touchpad\t Disables touchpad"
+   echo -e "e|enable"
+   echo -e "\tt|touch|touchpad\t Enables touchpad"
+   echo -e "r|restart"
+   echo -e "\tb|brightness|backlight\t Resets maximal brightness to 100/255"
 }
+
+LONGOPTIONS=verbose,enable,start,disable,mode
 
 Error() {
     echo "Error: $1"
@@ -146,7 +148,7 @@ set_mode_batery()
 # Get the options
 COMMANDS=""
 
-while getopts ":hn:d:v" option; do
+while getopts ":hvd:e:r:m:" option; do
     case $option in
         h | help) # display Help
             Help
@@ -155,12 +157,14 @@ while getopts ":hn:d:v" option; do
             echo "Verbose mode on"
             VERBOSE=1
             ;;
-        e | enable | start) 
+        enable | start) 
+            echo "hoj"
+            echo "$OPTARG"
             case $OPTARG in
-                t | touch | touchpad)
-                    COMMANDS="$COMMANDS enable_touchpad" 
+                t|touch|touchpad)
+                    COMMANDS+="enable_touchpad" 
                     ;;
-                k | b |keyboard-backlight)
+                k | b | keyboard-backlight)
                     COMMANDS+="enable_keyboard_backlight"
                     ;;
                 *) 
@@ -172,7 +176,7 @@ while getopts ":hn:d:v" option; do
         d | disable | stop) 
             case $OPTARG in
                 t | touch | touchpad)
-                    COMMANDS="$COMMANDS disable_touchpad" 
+                    COMMANDS+="disable_touchpad" 
                     ;;
                 k | b |keyboard-backlight)
                     COMMANDS+="disable_keyboard_backlight"
@@ -210,6 +214,7 @@ while getopts ":hn:d:v" option; do
             esac;;
         \?) # Invalid option
             echo "Error: Invalid option"
+            Help
             exit
             ;;
     esac
