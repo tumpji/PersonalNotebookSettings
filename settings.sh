@@ -2,6 +2,7 @@
 ############################################################
 # Help                                                     #
 ############################################################
+
 set -o errexit -o pipefail -o noclobber -o nounset
 
 Help()
@@ -19,7 +20,26 @@ Help()
    echo -e "\tb|brightness|backlight\t Resets maximal brightness to 100/255"
 }
 
+VERBOSE=0
 LONGOPTIONS=verbose,enable,start,disable,mode
+OPTIONS=v
+
+############################################################
+# issue section:
+# 
+# 
+# 
+# 
+# 
+#
+#
+#
+#
+#
+
+
+############################################################
+# error handling:
 
 Error() {
     echo "Error: $1"
@@ -148,6 +168,62 @@ set_mode_batery()
 # Process the input options. Add options as needed.        #
 ############################################################
 # Get the options
+
+! getopt --test > /dev/null
+if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+    Error getopt failed
+    exit 1
+fi
+
+! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTIONS --name $0 -- $@)
+if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    exit 2
+fi
+
+eval set -- "$PARSED"
+
+while true;
+do
+    case "$1" in
+        --verbose|-v)
+            VERBOSE=1
+            shift
+            ;;
+        --help|-h)
+            Help
+            exit 0
+            ;;
+        --start)
+            echo "start"
+            shift
+            ;;
+        --stop)
+            echo "stop"
+            shift
+            ;;
+        --enable)
+            echo "enable"
+            shift
+            ;;
+        --disable)
+            echo "disable"
+            shift
+            ;;
+        --)
+            break
+            ;;
+        *)
+            Error "Unknown option '$1'"
+            exit 1
+    esac
+done
+
+
+
+
+
+exit 0
+
 COMMANDS=""
 
 while getopts ":hvd:e:r:m:" option; do
