@@ -1,5 +1,4 @@
 #!/bin/bash
-
 ############################################################
 # Help                                                     #
 ############################################################
@@ -88,10 +87,25 @@ enable_touchpad()
         fi
     fi
 }
+############################################################
+# keyboard backlight
+
+disable_keyboard_backlight() 
+{
+    asusctl led-mode static -c 000000
+}
+
+enable_keyboard_backlight() 
+{
+    if [ -z "$1" ]; then
+        asusctl led-mode static -c $1
+    else
+        asusctl led-mode static -c 666666
+    fi
+}
 
 ############################################################
-# screen brightness
-
+# screen
 
 reset_brightness() 
 {
@@ -106,53 +120,72 @@ reset_brightness()
 COMMANDS=""
 
 while getopts ":hn:d:v" option; do
-   case $option in
-      h | help) # display Help
-         Help
-         exit;;
-      v)
-          echo "Verbose mode on"
-          VERBOSE=1
-          ;;
-      e | enable) 
-         case $OPTARG in
-             t | touch | touchpad)
-                COMMANDS="$COMMANDS enable_touchpad" 
-                ;;
-            *) 
-                Error "Invalid option: cannot determine what you want to enable"
-                exit 1
-                ;;
-        esac
-        ;;
-      d | disable) 
-         case $OPTARG in
-             t | touch | touchpad)
-                COMMANDS="$COMMANDS disable_touchpad" 
-                ;;
-            *) 
-                echo "Error: Invalid option: cannot determine what you want to disable"
-                exit 1
-                ;;
-        esac
-        ;;
-      r | reset)
-         case $OPTARG in
-             b | brightness | backlight)
-                COMMANDS="$COMMANDS reset_brightness" 
-                ;;
-            *) 
-                echo "Error: Invalid option: cannot determine what you want to disable"
-                exit 1
-                ;;
-        esac
-        ;;
-
-     \?) # Invalid option
-         echo "Error: Invalid option"
-         exit
-         ;;
-   esac
+    case $option in
+        h | help) # display Help
+            Help
+            exit;;
+        v)
+            echo "Verbose mode on"
+            VERBOSE=1
+            ;;
+        e | enable | start) 
+            case $OPTARG in
+                t | touch | touchpad)
+                    COMMANDS="$COMMANDS enable_touchpad" 
+                    ;;
+                k | b |keyboard-backlight)
+                    COMMANDS+="enable_keyboard_backlight"
+                    ;;
+                *) 
+                    Error "Invalid option: cannot determine what you want to enable"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        d | disable | stop) 
+            case $OPTARG in
+                t | touch | touchpad)
+                    COMMANDS="$COMMANDS disable_touchpad" 
+                    ;;
+                k | b |keyboard-backlight)
+                    COMMANDS+="disable_keyboard_backlight"
+                    ;;
+                *) 
+                    Error "Invalid option: cannot determine what you want to disable"
+                    exit 1
+                    ;;
+            esac;;
+        r | reset | restart)
+            case $OPTARG in
+                b | brightness | backlight)
+                    COMMANDS="$COMMANDS set_brightness" 
+                    ;;
+                *) 
+                    Error "Invalid option: cannot determine what you want to disable"
+                    exit 1
+                    ;;
+            esac;;
+        m | mode)
+            case $OPTARG in 
+                performance | boost)
+                    COMMANDS+='set_mode_performance'
+                    ;;
+                balanced | normal)
+                    COMMANDS+='set_mode_balanced'
+                    ;;
+                battery | eco)
+                    COMMANDS+='set_mode_batery'
+                    ;;
+                *)
+                    Error "Invalid option: cannot determine what mode you want to enable"
+                    exit 1
+                    ;;
+            esac;;
+        \?) # Invalid option
+            echo "Error: Invalid option"
+            exit
+            ;;
+    esac
 done
 
 for cmd in $COMMANDS;
