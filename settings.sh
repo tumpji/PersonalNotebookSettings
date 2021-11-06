@@ -1,5 +1,6 @@
 #!/bin/bash
 ############################################################
+
 # Help                                                     #
 ############################################################
 
@@ -8,38 +9,44 @@ set -o errexit -o pipefail -o noclobber -o nounset
 Help()
 {
    # Display Help
-   echo -e "Syntax: scriptTemplate [-d |-e|-v|-r]"
-   echo -e "options:"
-   echo -e "h     Print this Help."
-   echo -e "v     Verbose mode."
-   echo -e "d|disable"
-   echo -e "\tt|touch|touchpad\t Disables touchpad"
-   echo -e "e|enable"
-   echo -e "\tt|touch|touchpad\t Enables touchpad"
-   echo -e "r|restart"
-   echo -e "\tb|brightness|backlight\t Resets maximal brightness to 100/255"
+   echo -e "Syntax: [--help|-h]"
+   echo -e "        [--verbose|-v] {action} {target}"
+   echo -e "        [--verbose|-v] set {target_set} args"
+   echo -e " where"
+   echo -e "   {action} = start|stop]"
+   echo -e "   {target} = [touchpad]"
+   echo -e "   {target_set} = [brightness|mode]"
+   echo -e ""
+   echo -e " list of target:"
+   echo -e "   touchpad"
+   echo -e "     - enables/disables touchpad"
+   echo -e ""
+   echo -e " list of target_set:"
+   echo -e "   brightness [{integer to 255}]"
+   echo -e "     - sets maximum brightness (defaults to 100)"
+   echo -e "   mode [performance|balanced|battery] "
+   echo -e "     - sets power consumtion limit "
+   echo -e ""
 }
 
-VERBOSE=0
-LONGOPTIONS=verbose,enable,start,disable,mode
-OPTIONS=v
 
 ############################################################
 # issue section:
-# 
-# 
-# 
-# 
-# 
-#
-#
-#
-#
-#
+#   add enable
+#   add options to automaticly detect settings
+#   add set_mode
+#   
+#   set_brightness: check inpu 
+#   
 
 
 ############################################################
 # error handling:
+
+FatalError() {
+    echo "Fatal Error: $1"
+    exit 1
+}
 
 Error() {
     echo "Error: $1"
@@ -64,103 +71,110 @@ VERBOSE=0
 ############################################################
 # touchpad
 
-disable_touchpad() 
-{
+
+set_touchpad() {
+    # function uses xinput to disable/enable touchpad
+    # stop start 
+
+    # detect devicenumber 
     TOUCHPADID="$(xinput | grep Touchpad | sed 's\.*id=\\' | grep -o '^[0-9]*')"
     if [ $VERBOSE -eq 1 ]; then
-        Info "Disabling Touchpad"
         Info "Detected touchpad-id as '$TOUCHPADID'"
     fi
 
+    # check return + start 
     if [ -z $TOUCHPADID ]; then
-        Error "Cannot find touchpad-id"
-    else
+        FatalError "Cannot find touchpad-id"
+    elif [ "$1" = 'stop' ]; then
         xinput disable $TOUCHPADID
-
-        if [ $? -eq 0 ]; then
-            if [ $VERBOSE -eq 1 ]; then
-                Info "xinput succeded"
-            fi
-            Info "Touchpad disabled"
-        else
-            Error "xinput failed"
-        fi
-    fi
-}
-
-enable_touchpad() 
-{
-    TOUCHPADID="$(xinput | grep Touchpad | sed 's\.*id=\\' | grep -o '^[0-9]*')"
-    if [ $VERBOSE -eq 1 ]; then
-        Info "Enabling Touchpad"
-        Info "Detected touchpad id as '$TOUCHPADID'"
-    fi
-
-    if [ -z $TOUCHPADID ]; then
-        Error "Cannot find touchpad id"
-    else
+    elif [ "$1" = 'start' ]; then
         xinput enable $TOUCHPADID
-
-        if [ $? -eq 0 ]; then
-            if [ $VERBOSE -eq 1 ]; then
-                Info "xinput succeded"
-            fi
-            Info "Touchpad enabled"
-        else
-            Error "xinput failed"
-        fi
-    fi
-}
-############################################################
-# keyboard backlight
-
-disable_keyboard_backlight() 
-{
-    asusctl led-mode static -c 000000
-}
-
-enable_keyboard_backlight() 
-{
-    if [ -z "$1" ]; then
-        asusctl led-mode static -c $1
     else
-        asusctl led-mode static -c 666666
+        FatalError "Option $1 is not implemented"
+    fi
+
+    # check return
+    if [ $? -ne 0  ]; then 
+        FatalError "xinput failed"
+    elif [ $VERBOSE -eq 1 ]; then
+        Info "xinput succeded"
     fi
 }
 
-############################################################
-# screen
+set_keyboard_backlight() {
+    # function uses asusctl to set keyboard backlight
+    # stop start set
 
-reset_brightness() 
-{
-    echo 100 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    if [ "$1" = 'stop' ]; then
+        asusctl led-mode static -c 000000
+    elif [ "$1" = 'start' ]; then
+        asusctl led-mode static -c 555555
+    elif [ "$1" = 'set' -a -n "$2" ]; then
+        asusctl led-mode static -c $2
+    else
+        FatalError "Option $1 is not implemented"
+    fi
+
+    # check return
+    if [ $? -ne 0  ]; then 
+        FatalError "asusctl failed"
+    elif [ $VERBOSE -eq 1 ]; then
+        Info "asusctl succeded"
+    fi
 }
 
-reset_brightness() {
-    if [ -z "$1" ]; then
-        echo $1 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
-    else
+set_brightness() {
+    # function sets maximum brightness
+    # stop start set
+
+    if [ "$1" = 'stop' ]; then
+        echo 5 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    elif [ "$1" = 'start' ]; then
         echo 100 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    elif [ "$1" = 'set' -a -n $2 ]; then
+        echo $2 | sudo tee /sys/class/backlight/amdgpu_bl4/brightness
+    else
+        Error "Option $1 is not implemented"
+    fi
+
+    # check return
+    if [ $? -ne 0  ]; then 
+        FatalError "changing brightness failed"
+    elif [ $VERBOSE -eq 1 ]; then
+        Info "asusctl succeded"
     fi
 }
 
+set_mode() {
+    shift
 
-############################################################
-# mode
+    performance_mode_options=(performance boost extra speed power)
+    balanced_mode_options=(normal balanced)
+    battery_mode_options=(battery eco silent)
 
-set_mode_performance() 
-{
-    Error Mode setting is not implemented
-}
+    for item in "${performance_mode_options[@]}"; do
+        if [ "$item" = "$1" ]; then
+            Info "Setting up performance mode"
+            FatalError "Not implemented"
+            return
+        fi
+    done
+    for item in "${performance_mode_options[@]}"; do
+        if [ "$item" = "$1" ]; then
+            Info "Setting up normal mode"
+            FatalError "Not implemented"
+            return
+        fi
+    done
+    for item in "${performance_mode_options[@]}"; do
+        if [ "$item" = "$1" ]; then
+            Info "Setting up battery mode"
+            FatalError "Not implemented"
+            return
+        fi
+    done
 
-set_mode_balanced()
-{
-    Error Mode setting is not implemented
-}
-
-set_mode_batery()
-{
-    Error Mode setting is not implemented
+    FatalError "Cannot find mode '$1'"
 }
 
 
@@ -169,143 +183,74 @@ set_mode_batery()
 ############################################################
 # Get the options
 
-! getopt --test > /dev/null
-if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    Error getopt failed
-    exit 1
-fi
+VERBOSE=0
 
-! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTIONS --name $0 -- $@)
-if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-    exit 2
-fi
+STATE=init
+COMMAND=
 
-eval set -- "$PARSED"
-
-while true;
+while [ $# -ne 0 ];
 do
-    case "$1" in
-        --verbose|-v)
-            VERBOSE=1
-            shift
-            ;;
-        --help|-h)
-            Help
-            exit 0
-            ;;
-        --start)
-            echo "start"
-            shift
-            ;;
-        --stop)
-            echo "stop"
-            shift
-            ;;
-        --enable)
-            echo "enable"
-            shift
-            ;;
-        --disable)
-            echo "disable"
-            shift
-            ;;
-        --)
-            break
-            ;;
-        *)
-            Error "Unknown option '$1'"
-            exit 1
-    esac
-done
+    ARG="${1#-}"
+    ARG="${ARG#-}"
 
-
-
-
-
-exit 0
-
-COMMANDS=""
-
-while getopts ":hvd:e:r:m:" option; do
-    case $option in
-        h | help) # display Help
-            Help
-            exit;;
-        v)
-            echo "Verbose mode on"
-            VERBOSE=1
-            ;;
-        enable | start) 
-            echo "hoj"
-            echo "$OPTARG"
-            case $OPTARG in
-                t|touch|touchpad)
-                    COMMANDS+="enable_touchpad" 
-                    ;;
-                k | b | keyboard-backlight)
-                    COMMANDS+="enable_keyboard_backlight"
-                    ;;
-                *) 
-                    Error "Invalid option: cannot determine what you want to enable"
-                    exit 1
-                    ;;
-            esac
-            ;;
-        d | disable | stop) 
-            case $OPTARG in
-                t | touch | touchpad)
-                    COMMANDS+="disable_touchpad" 
-                    ;;
-                k | b |keyboard-backlight)
-                    COMMANDS+="disable_keyboard_backlight"
-                    ;;
-                *) 
-                    Error "Invalid option: cannot determine what you want to disable"
-                    exit 1
-                    ;;
-            esac;;
-        r | reset | restart)
-            case $OPTARG in
-                b | brightness | backlight)
-                    COMMANDS="$COMMANDS set_brightness" 
-                    ;;
-                *) 
-                    Error "Invalid option: cannot determine what you want to disable"
-                    exit 1
-                    ;;
-            esac;;
-        m | mode)
-            case $OPTARG in 
-                performance | boost)
-                    COMMANDS+='set_mode_performance'
-                    ;;
-                balanced | normal)
-                    COMMANDS+='set_mode_balanced'
-                    ;;
-                battery | eco)
-                    COMMANDS+='set_mode_batery'
-                    ;;
-                *)
-                    Error "Invalid option: cannot determine what mode you want to enable"
-                    exit 1
-                    ;;
-            esac;;
-        \?) # Invalid option
-            echo "Error: Invalid option"
-            Help
-            exit
-            ;;
-    esac
-done
-
-for cmd in $COMMANDS;
-do
     if [ $VERBOSE -eq 1 ]; then
-        Info "Running: $cmd"
+        Info "Parsing $ARG"
     fi
-    $cmd
+
+
+    if [ $STATE = init ]; 
+    then
+        case "$ARG" in
+            verbose|v)
+                VERBOSE=1
+                Info "Verbose mode on"
+                shift
+                ;;
+            help|h)
+                Help
+                exit 0
+                ;;
+            set) STATE=set; shift;;
+            start) STATE=start; shift;;
+            stop) STATE=stop; shift;;
+            #--enable) STATE=enable shift ;;
+            #--disable) STATE=disable shift ;;
+            *)
+                FatalError "Unknown option '$1'"
+                ;;
+        esac
+    elif [ "$STATE" = start -o "$STATE" = stop -o "$STATE" = set ]; then
+        DEVICE="$1"
+        shift
+
+        if [ "$DEVICE" = touchpad ]; then
+            COMMAND="set_touchpad $STATE "
+        elif [ "$DEVICE" = backlight ]; then
+            COMMAND="set_brightness $STATE "
+        elif [ "$DEVICE" = mode ]; then
+            COMMAND="set_mode $STATE "
+        elif [ -z "$DEVICE" ]; then
+            FatalError "You need to fill up device"
+        else
+            FatalError "Can not find device '$DEVICE'"
+        fi
+
+        # Set handling
+        if [ $STATE = set ]; then 
+            if [ -z "$1" ]; then
+                FatalError "If using set it is required additional argument"
+            fi
+
+            COMMAND="$COMMAND $@"
+        fi
+
+        if [ $VERBOSE -eq 1 ]; then
+            Info "Running code: $COMMAND"
+        fi
+
+        $COMMAND
+        STATE=init
+    else
+        FatalError "Unknown state"
+    fi
 done
-
-
-
-
